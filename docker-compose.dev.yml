@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7
+    container_name: mern-mongodb-dev
+    restart: unless-stopped
+    ports:
+      - '27017:27017'
+    environment:
+      MONGO_INITDB_DATABASE: mern-boilerplate
+    volumes:
+      - mongodb_data_dev:/data/db
+    networks:
+      - mern-network-dev
+
+  # Backend API Server (Development)
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile.dev
+    container_name: mern-server-dev
+    restart: unless-stopped
+    ports:
+      - '5000:5000'
+    environment:
+      NODE_ENV: development
+      PORT: 5000
+      MONGODB_URI: mongodb://mongodb:27017/mern-boilerplate
+      JWT_SECRET: dev-secret-key
+      JWT_REFRESH_SECRET: dev-refresh-secret-key
+      JWT_EXPIRE: 15m
+      JWT_REFRESH_EXPIRE: 7d
+      CLIENT_URL: http://localhost:3000
+    volumes:
+      - ./server/src:/app/src
+      - /app/node_modules
+    depends_on:
+      - mongodb
+    networks:
+      - mern-network-dev
+    command: npm run dev
+
+  # Frontend React Application (Development)
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile.dev
+    container_name: mern-client-dev
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    environment:
+      VITE_API_URL: http://localhost:5000/api
+    volumes:
+      - ./client/src:/app/src
+      - ./client/public:/app/public
+      - /app/node_modules
+    depends_on:
+      - server
+    networks:
+      - mern-network-dev
+    command: npm run dev
+
+networks:
+  mern-network-dev:
+    driver: bridge
+
+volumes:
+  mongodb_data_dev:
+    driver: local
